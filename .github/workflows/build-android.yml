@@ -2,62 +2,59 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.3"
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    name: build
+    runs-on: ubuntu-22.04
+    container:
+      image: barichello/godot-ci:4.3
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java Development Kit (JDK)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
 
       - name: Create debug keystore
         run: |
-          rm -f ~/.android/debug.keystore
-          mkdir -p ~/.android
-          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore ~/.android/debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android \
+            -keystore /root/debug.keystore -storepass android \
+            -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
 
       - name: Point Godot at Android SDK and JDK
         run: |
-          mkdir -p ~/.config/godot
-          echo "export_credentials/android/sdk_path = \"$ANDROID_HOME\"" > ~/.config/godot/editor_settings-4.godot
-          echo "export_credentials/android/debug_keystore = \"$HOME/.android/debug.keystore\"" >> ~/.config/godot/editor_settings-4.godot
-          echo "export_credentials/android/debug_keystore_user = \"androiddebugkey\"" >> ~/.config/godot/editor_settings-4.godot
-          echo "export_credentials/android/debug_keystore_pass = \"android\"" >> ~/.config/godot/editor_settings-4.godot
+          godot --headless --quiet --editor --quit || true
+          SETTINGS=$(ls ~/.config/godot/editor_settings-4*.tres | head -n 1)
+          SDK=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}
+          JDK=${JAVA_HOME:-$(dirname $(dirname $(readlink -f $(which javac))))}
+          echo "Settings: $SETTINGS  SDK: $SDK  JDK: $JDK"
+          sed -i '/export\/android\/android_sdk_path/d;/export\/android\/java_sdk_path/d' "$SETTINGS"
+          echo "export/android/android_sdk_path = \"$SDK\"" >> "$SETTINGS"
+          echo "export/android/java_sdk_path = \"$JDK\"" >> "$SETTINGS"
 
-      - name: Download Godot Engine
+      - name: Import project
+        run: godot --headless --quiet --import || true
+
+      - name: Export APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /root/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
-          wget https://github.com/godotengine/godot/releases/download/4.2.1-stable/Godot_v4.2.1-stable_linux.x86_64.zip
-          unzip Godot_v4.2.1-stable_linux.x86_64.zip
-          mv Godot_v4.2.1-stable_linux.x86_64 godot
-          chmod +x godot
+          mkdir -p build
+          godot --headless --verbose --export-debug "Android" build/Bassam.apk
+          ls -la build
 
-      - name: Download Godot Export Templates
-        run: |
-          wget https://github.com/godotengine/godot/releases/download/4.2.1-stable/Godot_v4.2.1-stable_export_templates.tpz
-          mkdir -p ~/.local/share/godot/export_templates/4.2.1.stable
-          unzip Godot_v4.2.1-stable_export_templates.tpz -d ~/.local/share/godot/export_templates/4.2.1.stable/
-          mv ~/.local/share/godot/export_templates/4.2.1.stable/templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
-
-      - name: Build Android APK
-        run: |
-          mkdir -p build/
-          ./godot --headless --export-debug "Android" build/game.apk
-
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: game-apk
-          path: build/game.apk
+          name: Android-APK
+          path: build/Bassam.apk
