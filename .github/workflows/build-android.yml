@@ -25,9 +25,11 @@ jobs:
 
       - name: Create debug keystore
         run: |
+          rm -f /root/debug.keystore
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android \
             -keystore /root/debug.keystore -storepass android \
             -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          ls -la /root/debug.keystore
 
       - name: Point Godot at Android SDK and JDK
         run: |
