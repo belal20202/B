@@ -1,11 +1,10 @@
-
 # Bassam — بسام
 Iraqi 3D endless runner for Android (Godot 4.3, GDScript). **صنع في العراق — Made in Iraq.**
 
 ## Get the APK (no software to install)
 1. Create a new GitHub repository and upload everything in this folder (keep the `.github` folder).
-2. Open the **Actions** tab → **Build Bassam APK** → it runs on every push (or press *Run workflow*).
-3. When it finishes, open the run and download the artifact **Bassam-Android-APK**. Unzip it and install `Bassam.apk` on your phone (allow installs from unknown sources).
+2. Open the **Actions** tab → **Build Android APK** → it runs on every push (or press *Run workflow*).
+3. When it finishes, open the run and download the artifact **Android-APK**. Unzip it and install `Bassam.apk` on your phone (allow installs from unknown sources).
 
 ## Controls
 Swipe left / right to change lane, up to jump, down to roll. Android back button pauses.
@@ -24,9 +23,9 @@ Swipe left / right to change lane, up to jump, down to roll. Android back button
 - Day cycle across the cities (afternoon, noon, sunset, night with lit windows, moon and stars, sunrise)
 - Roads with asphalt texture, cracks, patches, manholes, zebra crossings, edge lines, tram rails, tiled sidewalks
 - Animated scenery: swaying palms, flags, bunting, walking pedestrians, boats, birds, drifting clouds, cars on overpasses
-- Animated obstacles: spinning train and taxi wheels, swaying trains, bouncing taxis, blinking warning lights, destination boards
-- Dust, landing puffs and speed lines; low/high graphics switch in Settings (use low on weaker phones)
+- Animated obstacles: spinning train and taxi wheels, swaying trains, bouncing taxis, blinking warning lights
+- Dust, landing puffs and speed lines; three graphics levels in Settings (use low on weaker phones)
 
 ## Notes
-- Arabic text uses the phone's system Arabic font.
+- All text is Arabic and uses a bundled font (fonts/arabic.ttf, DejaVu Sans Bold, see FONT-LICENSE.txt).
 - The APK is a debug-signed build, fine for testing and sharing. For store release, add your own release keystore.
