@@ -1,4 +1,3 @@
-
 extends RefCounted
 # Animated scenery builders: palms, pedestrians, flags, bunting, wires, bridges, boats, shop signs.
 # Every builder must be called with a parent that is already inside the scene tree (tweens need it).
@@ -106,7 +105,7 @@ static func palm(parent: Node3D, pos: Vector3) -> void:
 		cyl(root, 0.15, 0.15, 0.08, mat(Color("5e4327"), 0.9), Vector3(0, 0.8 + k * th * 0.25, 0), Vector3.ZERO, 8)
 	var crown := node(root, Vector3(0, th, 0))
 	var leaf := mat(Color("2f7d32"), 0.8)
-	var n_leaf := 7 if quality > 0 else 5
+	var n_leaf := 7 if quality > 1 else 5
 	for i in n_leaf:
 		var p := node(crown)
 		p.rotation.y = i * TAU / n_leaf
@@ -115,7 +114,7 @@ static func palm(parent: Node3D, pos: Vector3) -> void:
 		box(dr, Vector3(0.45, 0.05, 2.6), leaf, Vector3(0, 0, -1.3))
 	sph(crown, 0.15, mat(Color("5a3a1e")), Vector3(0.12, -0.15, 0.0))
 	sph(crown, 0.12, mat(Color("d9822b"), 0.6), Vector3(-0.14, -0.25, 0.05))
-	if quality > 0:
+	if quality > 1:
 		swing(crown, "rotation:z", 0.05, -0.05, randf_range(1.6, 2.6))
 
 static func pine(parent: Node3D, pos: Vector3) -> void:
@@ -126,7 +125,7 @@ static func pine(parent: Node3D, pos: Vector3) -> void:
 	var top := node(root, Vector3(0, 0, 0))
 	cyl(top, 0.0, 1.5, h * 0.6, g, Vector3(0, 1.4 + h * 0.3, 0), Vector3.ZERO, 10)
 	cyl(top, 0.0, 1.1, h * 0.5, g, Vector3(0, 1.4 + h * 0.62, 0), Vector3.ZERO, 10)
-	if quality > 0:
+	if quality > 1:
 		swing(top, "rotation:z", 0.025, -0.025, randf_range(1.8, 2.8))
 
 # ------------------------------------------------------------------ people
@@ -169,17 +168,16 @@ static func flag(parent: Node3D, pos: Vector3) -> void:
 	cyl(n, 0.04, 0.06, 6.5, mat(Color("c9ced4"), 0.4, 0.8), Vector3(0, 3.25, 0), Vector3.ZERO, 8)
 	sph(n, 0.09, mat(Color("e2b033"), 0.3, 0.9), Vector3(0, 6.55, 0))
 	var cloth := node(n, Vector3(0, 6.0, 0))
-	var cols := [Color("ce1126"), Color("f4f4f4"), Color("111111")]
+	var cols := [Color("c0392b"), Color("f2c14e"), Color("1f4fa8")]
 	for i in 3:
 		box(cloth, Vector3(0.02, 0.24, 1.3), mat(cols[i], 0.9), Vector3(0, -i * 0.24, 0.65))
-	box(cloth, Vector3(0.025, 0.1, 0.5), mat(Color("1c9a4d"), 0.9), Vector3(0, -0.24, 0.65))
 	swing(cloth, "rotation:y", 0.4, -0.25, randf_range(0.45, 0.7))
 
 static func bunting(parent: Node3D, y: float, half_w: float) -> void:
 	var n := node(parent, Vector3(0, y, randf_range(-8.0, 8.0)))
 	box(n, Vector3(half_w * 2.0, 0.03, 0.03), mat(Color("444444")), Vector3.ZERO)
 	var flags := node(n)
-	var cols := [Color("1c9a4d"), Color("f4f4f4"), Color("ce1126"), Color("111111"), Color("f2c14e")]
+	var cols := [Color("e0a81c"), Color("2980b9"), Color("c0392b"), Color("27ae60"), Color("f4f4f4")]
 	for i in 13:
 		var x := -half_w + 0.6 + i * (half_w * 2.0 - 1.2) / 12.0
 		box(flags, Vector3(0.3, 0.42, 0.04), mat(cols[i % 5], 0.8), Vector3(x, -0.24, 0), Vector3(0, 0, PI * 0.25))
@@ -242,7 +240,7 @@ static func sign_board(parent: Node3D, text: String, pos: Vector3, side: float, 
 	parent.add_child(l)
 
 static func building_extras(parent: Node3D, side: float, cx: float, cz: float, w: float, h: float) -> void:
-	if quality <= 0:
+	if quality <= 1:
 		return
 	var white := mat(Color("e8e8e8"), 0.6)
 	for k in randi_range(1, 2):
