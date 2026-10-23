@@ -18,6 +18,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Add Arabic font (if fonts/arabic.ttf is missing)
+        run: |
+          mkdir -p fonts
+          if [ ! -f fonts/arabic.ttf ]; then
+            apt-get update -qq
+            apt-get install -y -qq fonts-dejavu-core
+            cp /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf fonts/arabic.ttf
+          fi
+          ls -la fonts
+
       - name: Install export templates
         run: |
           mkdir -p ~/.local/share/godot/export_templates
