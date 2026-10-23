@@ -10,7 +10,7 @@ const DARK := Color(0.06, 0.09, 0.11, 0.90)
 
 var game
 var root: Control
-var font: SystemFont
+var font: Font
 var theme_res: Theme
 var screens := {}
 var current := ""
@@ -86,6 +86,38 @@ class Sparkles extends Control:
 
 # ------------------------------------------------------------ helpers
 
+func _load_font() -> Font:
+	if ResourceLoader.exists("res://fonts/arabic.ttf"):
+		return load("res://fonts/arabic.ttf")
+	var f := SystemFont.new()
+	f.font_names = PackedStringArray(["Noto Sans Arabic", "Noto Naskh Arabic", "Droid Arabic Naskh", "Arial", "sans-serif"])
+	return f
+
+func _ar(s: String) -> String:
+	var out := ""
+	for ch in s:
+		var i := "0123456789".find(ch)
+		if i >= 0:
+			out += "٠١٢٣٤٥٦٧٨٩"[i]
+		else:
+			out += ch
+	return out
+
+func _made_badge() -> Control:
+	var pc := PanelContainer.new()
+	var st := _style(Color("14663a"), 40, 4, GOLD)
+	st.shadow_color = Color(0, 0, 0, 0.5)
+	st.shadow_size = 10
+	st.content_margin_left = 44
+	st.content_margin_right = 44
+	st.content_margin_top = 10
+	st.content_margin_bottom = 10
+	pc.add_theme_stylebox_override("panel", st)
+	pc.add_child(_lbl("صنع في العراق", 52, Color.WHITE, 8))
+	pc.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return pc
+
+
 func _style(col: Color, radius := 24, bw := 0, bcol := Color(0, 0, 0, 0)) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = col
@@ -103,7 +135,7 @@ func _style(col: Color, radius := 24, bw := 0, bcol := Color(0, 0, 0, 0)) -> Sty
 
 func _lbl(text: String, size := 40, col := Color.WHITE, outline := 8) -> Label:
 	var l := Label.new()
-	l.text = text
+	l.text = _ar(text)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", size)
@@ -115,7 +147,7 @@ func _lbl(text: String, size := 40, col := Color.WHITE, outline := 8) -> Label:
 
 func _btn(text: String, size: Vector2, col: Color, fsize := 44) -> Button:
 	var b := Button.new()
-	b.text = text
+	b.text = _ar(text)
 	b.custom_minimum_size = size
 	b.pivot_offset = size * 0.5
 	b.add_theme_font_size_override("font_size", fsize)
@@ -190,29 +222,8 @@ func _pill(col: Color) -> Array:
 	h.add_child(l)
 	return [pc, l]
 
-func _flag() -> Control:
-	var f := VBoxContainer.new()
-	f.add_theme_constant_override("separation", 0)
-	f.custom_minimum_size = Vector2(120, 78)
-	var cols := [RED, Color.WHITE, Color("111111")]
-	for i in 3:
-		var r := ColorRect.new()
-		r.color = cols[i]
-		r.custom_minimum_size = Vector2(120, 26)
-		f.add_child(r)
-		if i == 1:
-			var t := Label.new()
-			t.text = "丕賱賱賴 兀賰亘乇"
-			t.add_theme_font_size_override("font_size", 17)
-			t.add_theme_color_override("font_color", GREEN)
-			t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			t.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			r.add_child(t)
-	return f
-
 func _toast(text: String) -> void:
-	toast_label.text = text
+	toast_label.text = _ar(text)
 	toast_label.modulate.a = 1.0
 	toast_label.scale = Vector2(0.8, 0.8)
 	var t := create_tween()
@@ -248,9 +259,7 @@ func _init() -> void:
 func setup(g) -> void:
 	game = g
 	get_tree().quit_on_go_back = false
-	font = SystemFont.new()
-	font.font_names = PackedStringArray(["Noto Sans Arabic", "Noto Naskh Arabic", "Droid Arabic Naskh", "Roboto", "Arial", "sans-serif"])
-	font.font_weight = 700
+	font = _load_font()
 	theme_res = Theme.new()
 	theme_res.default_font = font
 	theme_res.default_font_size = 40
@@ -285,7 +294,7 @@ func setup(g) -> void:
 	Sfx.play_music("menu")
 	show_screen("menu")
 	if Save.daily_reward > 0:
-		daily_label.text = "賲賰丕賮兀丞 丕賱丿禺賵賱 丕賱賷賵賲賷\n+%d 毓賲賱丞\n丕賱兀賷丕賲 丕賱賲鬲鬲丕賱賷丞: %d" % [Save.daily_reward, int(Save.d["streak"])]
+		daily_label.text = _ar("مكافأة الدخول اليومي\n+%d عملة\nالأيام المتتالية: %d" % [Save.daily_reward, int(Save.d["streak"])])
 		show_screen("daily")
 
 func show_screen(name: String) -> void:
@@ -311,7 +320,17 @@ func show_screen(name: String) -> void:
 
 func _build_menu() -> void:
 	var s := _screen("menu", false)
+	var vg := ColorRect.new()
+	vg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shd := Shader.new()
+	shd.code = "shader_type canvas_item;\nvoid fragment() {\n\tvec2 uv = UV - vec2(0.5);\n\tfloat v = smoothstep(0.30, 0.80, length(uv * vec2(1.0, 0.72)));\n\tfloat top = smoothstep(0.42, 0.0, UV.y) * 0.45;\n\tfloat bot = smoothstep(0.60, 1.0, UV.y) * 0.62;\n\tCOLOR = vec4(0.02, 0.05, 0.04, clamp(v * 0.45 + top + bot, 0.0, 0.88));\n}\n"
+	var smat := ShaderMaterial.new()
+	smat.shader = shd
+	vg.material = smat
+	s.add_child(vg)
 	var sun := Sunburst.new()
+	sun.center = Vector2(540, 300)
 	sun.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	s.add_child(sun)
 	var sp := Sparkles.new()
@@ -337,27 +356,47 @@ func _build_menu() -> void:
 
 	var logo := VBoxContainer.new()
 	logo.anchor_right = 1.0
-	logo.offset_top = 190
-	logo.offset_bottom = 560
-	logo.add_theme_constant_override("separation", -10)
+	logo.offset_top = 150
+	logo.offset_bottom = 480
+	logo.add_theme_constant_override("separation", 6)
 	s.add_child(logo)
-	var l1 := _lbl("BASSAM", 190, GOLD, 26)
-	l1.pivot_offset = Vector2(540, 100)
+	var l1 := _lbl("بسام", 230, GOLD, 34)
+	l1.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	l1.add_theme_constant_override("shadow_offset_x", 0)
+	l1.add_theme_constant_override("shadow_offset_y", 12)
+	l1.custom_minimum_size = Vector2(0, 250)
+	l1.pivot_offset = Vector2(540, 125)
 	logo.add_child(l1)
-	var l2 := _lbl("亘爻丕賲", 120, Color.WHITE, 20)
-	l2.pivot_offset = Vector2(540, 70)
-	logo.add_child(l2)
-	var l3 := _lbl("乇賰囟丞 毓亘乇 賲丿賳 丕賱毓乇丕賯", 40, Color("e8f5ec"), 8)
+	var deco := HBoxContainer.new()
+	deco.alignment = BoxContainer.ALIGNMENT_CENTER
+	deco.add_theme_constant_override("separation", 18)
+	logo.add_child(deco)
+	var ln1 := ColorRect.new()
+	ln1.color = GOLD
+	ln1.custom_minimum_size = Vector2(190, 4)
+	ln1.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	deco.add_child(ln1)
+	var dia := Panel.new()
+	dia.custom_minimum_size = Vector2(24, 24)
+	dia.pivot_offset = Vector2(12, 12)
+	dia.rotation = PI * 0.25
+	dia.add_theme_stylebox_override("panel", _style(GOLD, 3, 0))
+	deco.add_child(dia)
+	var ln2 := ColorRect.new()
+	ln2.color = GOLD
+	ln2.custom_minimum_size = Vector2(190, 4)
+	ln2.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	deco.add_child(ln2)
+	var l3 := _lbl("ركضة عبر مدن لا تنتهي", 46, Color("fff4d6"), 8)
 	logo.add_child(l3)
 	var tw := create_tween().set_loops()
-	tw.tween_property(l1, "scale", Vector2(1.05, 1.05), 1.2).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(l1, "scale", Vector2(1.0, 1.0), 1.2).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(l1, "scale", Vector2(1.04, 1.04), 1.3).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(l1, "scale", Vector2(1.0, 1.0), 1.3).set_trans(Tween.TRANS_SINE)
 	var tw2 := create_tween().set_loops()
-	tw2.tween_property(l1, "modulate", Color(1.0, 0.95, 0.75), 1.6).set_trans(Tween.TRANS_SINE)
-	tw2.tween_property(l1, "modulate", Color(1, 1, 1), 1.6).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(l1, "modulate", Color(1.0, 0.96, 0.8), 1.8).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(l1, "modulate", Color(1, 1, 1), 1.8).set_trans(Tween.TRANS_SINE)
 	var tw3 := create_tween().set_loops()
-	tw3.tween_property(l2, "rotation", 0.03, 1.5).set_trans(Tween.TRANS_SINE)
-	tw3.tween_property(l2, "rotation", -0.03, 1.5).set_trans(Tween.TRANS_SINE)
+	tw3.tween_property(dia, "rotation", TAU, 6.0).as_relative()
 
 	var bottom := VBoxContainer.new()
 	bottom.anchor_top = 1.0
@@ -365,43 +404,36 @@ func _build_menu() -> void:
 	bottom.anchor_right = 1.0
 	bottom.offset_left = 40
 	bottom.offset_right = -40
-	bottom.offset_top = -620
-	bottom.offset_bottom = -28
-	bottom.add_theme_constant_override("separation", 22)
+	bottom.offset_top = -600
+	bottom.offset_bottom = -34
+	bottom.add_theme_constant_override("separation", 26)
 	bottom.alignment = BoxContainer.ALIGNMENT_END
 	s.add_child(bottom)
-	var play := _btn("丕賱毓亘 丕賱丌賳", Vector2(640, 170), GREEN, 72)
+	var play := _btn("ابدأ الجري", Vector2(760, 176), GREEN, 82)
 	play.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	play.pressed.connect(_start_run)
 	bottom.add_child(play)
 	var pt := create_tween().set_loops()
-	pt.tween_property(play, "scale", Vector2(1.05, 1.05), 0.7).set_trans(Tween.TRANS_SINE)
-	pt.tween_property(play, "scale", Vector2(1.0, 1.0), 0.7).set_trans(Tween.TRANS_SINE)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	pt.tween_property(play, "scale", Vector2(1.04, 1.04), 0.8).set_trans(Tween.TRANS_SINE)
+	pt.tween_property(play, "scale", Vector2(1.0, 1.0), 0.8).set_trans(Tween.TRANS_SINE)
+	var row := GridContainer.new()
+	row.columns = 4
+	row.add_theme_constant_override("h_separation", 14)
+	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	bottom.add_child(row)
-	var b1 := _btn("丕賱賲鬲噩乇", Vector2(236, 130), Color("e08a1e"), 38)
+	var b1 := _btn("المتجر", Vector2(236, 128), Color("e08a1e"), 40)
 	b1.pressed.connect(func(): show_screen("shop"))
-	var b2 := _btn("丕賱兀夭賷丕亍", Vector2(236, 130), Color("8e44ad"), 38)
+	var b2 := _btn("الأزياء", Vector2(236, 128), Color("8e44ad"), 40)
 	b2.pressed.connect(func(): show_screen("wardrobe"))
-	var b3 := _btn("丕賱賲賴丕賲", Vector2(236, 130), Color("2980b9"), 38)
+	var b3 := _btn("المهام", Vector2(236, 128), Color("2980b9"), 40)
 	b3.pressed.connect(func(): show_screen("missions"))
-	var b4 := _btn("丕賱廿毓丿丕丿丕鬲", Vector2(236, 130), Color("5d6d7e"), 34)
+	var b4 := _btn("الإعدادات", Vector2(236, 128), Color("5d6d7e"), 36)
 	b4.pressed.connect(func(): show_screen("settings"))
 	for b in [b1, b2, b3, b4]:
 		row.add_child(b)
-	var badge := HBoxContainer.new()
-	badge.alignment = BoxContainer.ALIGNMENT_CENTER
-	badge.add_theme_constant_override("separation", 20)
+	var badge := _made_badge()
 	bottom.add_child(badge)
-	badge.add_child(_flag())
-	var bl := VBoxContainer.new()
-	bl.add_theme_constant_override("separation", -6)
-	badge.add_child(bl)
-	bl.add_child(_lbl("氐賳毓 賮賷 丕賱毓乇丕賯", 52, Color.WHITE, 10))
-	bl.add_child(_lbl("MADE IN IRAQ", 28, GOLD, 6))
-	s.set_meta("pop", [play, b1, b2, b3, b4, badge])
+	s.set_meta("pop", [play, b1, b2, b3, b4, badge, l3])
 
 # ------------------------------------------------------------ HUD / pause / game over
 
@@ -415,7 +447,7 @@ func _build_hud() -> void:
 	hud_score = _lbl("0", 84, Color.WHITE, 14)
 	hud_score.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	tl.add_child(hud_score)
-	hud_dist = _lbl("0 賲", 40, Color("e8f5ec"), 8)
+	hud_dist = _lbl("0 م", 40, Color("e8f5ec"), 8)
 	hud_dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	tl.add_child(hud_dist)
 	var pu := VBoxContainer.new()
@@ -477,11 +509,11 @@ func _build_pause() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 26)
 	p.add_child(v)
-	v.add_child(_lbl("廿賷賯丕賮 賲丐賯鬲", 70, GOLD, 12))
-	var r := _btn("賲鬲丕亘毓丞", Vector2(560, 130), GREEN, 52)
+	v.add_child(_lbl("إيقاف مؤقت", 70, GOLD, 12))
+	var r := _btn("متابعة", Vector2(560, 130), GREEN, 52)
 	r.pressed.connect(_resume)
 	v.add_child(r)
-	var h := _btn("丕賱賯丕卅賲丞 丕賱乇卅賷爻賷丞", Vector2(560, 130), RED, 46)
+	var h := _btn("القائمة الرئيسية", Vector2(560, 130), RED, 46)
 	h.pressed.connect(_home_from_run)
 	v.add_child(h)
 
@@ -496,31 +528,31 @@ func _build_gameover() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 20)
 	p.add_child(v)
-	go_title = _lbl("丕賳鬲賴鬲 丕賱噩賵賱丞", 76, GOLD, 14)
+	go_title = _lbl("انتهت الجولة", 76, GOLD, 14)
 	v.add_child(go_title)
 	go_score = _lbl("0", 120, Color.WHITE, 16)
 	v.add_child(go_score)
 	go_info = _lbl("", 42, Color("e8f5ec"), 8)
 	go_info.custom_minimum_size = Vector2(700, 0)
 	v.add_child(go_info)
-	go_revive = _btn("兀賰賲賱  (500 毓賲賱丞)", Vector2(640, 125), Color("8e44ad"), 46)
+	go_revive = _btn("أكمل  (500 عملة)", Vector2(640, 125), Color("8e44ad"), 46)
 	go_revive.pressed.connect(_revive)
 	v.add_child(go_revive)
-	var a := _btn("丕賱毓亘 賲噩丿丿丕賸", Vector2(640, 135), GREEN, 54)
+	var a := _btn("العب مجدداً", Vector2(640, 135), GREEN, 54)
 	a.pressed.connect(_start_run)
 	v.add_child(a)
-	var h := _btn("丕賱賯丕卅賲丞 丕賱乇卅賷爻賷丞", Vector2(640, 115), Color("5d6d7e"), 42)
+	var h := _btn("القائمة الرئيسية", Vector2(640, 115), Color("5d6d7e"), 42)
 	h.pressed.connect(_home_from_run)
 	v.add_child(h)
 
 func _process(_dt: float) -> void:
 	if current == "menu":
-		menu_coins.text = str(int(Save.d["coins"]))
-		menu_best.text = "%d" % int(Save.d["best"])
+		menu_coins.text = _ar(str(int(Save.d["coins"])))
+		menu_best.text = _ar("%d" % int(Save.d["best"]))
 	elif current == "hud":
-		hud_score.text = str(game.get_score())
-		hud_dist.text = "%d 賲" % int(game.distance)
-		hud_coins.text = str(game.run_coins)
+		hud_score.text = _ar(str(game.get_score()))
+		hud_dist.text = _ar("%d م" % int(game.distance))
+		hud_coins.text = _ar(str(game.run_coins))
 		for id in pu_rows.keys():
 			var t: float = game.timers[id]
 			var row = pu_rows[id]
@@ -553,20 +585,20 @@ func _revive() -> void:
 		show_screen("hud")
 	else:
 		Sfx.play("deny")
-		_toast("賱丕 鬲賲賱賰 毓賲賱丕鬲 賰丕賮賷丞")
+		_toast("لا تملك عملات كافية")
 
 func _on_run_ended(r: Dictionary) -> void:
-	go_score.text = str(r["score"])
-	go_title.text = "乇賯賲 賯賷丕爻賷 噩丿賷丿!" if r["new_best"] else "丕賳鬲賴鬲 丕賱噩賵賱丞"
-	go_info.text = "丕賱賲爻丕賮丞: %d 賲\n丕賱毓賲賱丕鬲: %d\n兀賮囟賱 賳鬲賷噩丞: %d" % [r["distance"], r["coins"], r["best"]]
+	go_score.text = _ar(str(r["score"]))
+	go_title.text = "رقم قياسي جديد!" if r["new_best"] else "انتهت الجولة"
+	go_info.text = _ar("المسافة: %d م\nالعملات: %d\nأفضل نتيجة: %d" % [r["distance"], r["coins"], r["best"]])
 	go_revive.visible = r["can_revive"]
 	show_screen("gameover")
 	_pop([go_score, go_revive])
 
 func _on_city(i: int) -> void:
 	var c: Dictionary = Data.cities()[i]
-	banner.text = "賲乇丨亘丕賸 亘賰賲 賮賷 " + c["name"]
-	banner_sub.text = c["en"].to_upper()
+	banner.text = "مرحباً بكم في " + c["name"]
+	banner_sub.text = "أحسنت! واصل الركض"
 	for l in [banner, banner_sub]:
 		l.modulate.a = 0.0
 	banner.scale = Vector2(0.6, 0.6)
@@ -597,7 +629,7 @@ func _page(name: String, title: String) -> VBoxContainer:
 	s.add_child(v)
 	var head := HBoxContainer.new()
 	v.add_child(head)
-	var back := _btn("乇噩賵毓", Vector2(200, 100), RED, 40)
+	var back := _btn("رجوع", Vector2(200, 100), RED, 40)
 	back.pressed.connect(func(): show_screen("menu"))
 	head.add_child(back)
 	var ti := _lbl(title, 66, GOLD, 12)
@@ -609,7 +641,7 @@ func _page(name: String, title: String) -> VBoxContainer:
 	return v
 
 func _build_shop() -> void:
-	var v := _page("shop", "賲鬲噩乇 丕賱賯丿乇丕鬲")
+	var v := _page("shop", "متجر القدرات")
 	var cp := _pill(GOLD)
 	shop_coins = cp[1]
 	cp[0].size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -620,7 +652,7 @@ func _build_shop() -> void:
 	v.add_child(shop_list)
 
 func _refresh_shop() -> void:
-	shop_coins.text = str(int(Save.d["coins"]))
+	shop_coins.text = _ar(str(int(Save.d["coins"])))
 	for c in shop_list.get_children():
 		c.queue_free()
 	for u in Data.upgrades():
@@ -642,23 +674,23 @@ func _refresh_shop() -> void:
 		var ds := _lbl(u["desc"], 30, Color("b8c4cc"), 4)
 		ds.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		col.add_child(ds)
-		var st := _lbl("丕賱賲爻鬲賵賶 %d/%d  鈥�  丕賱賲丿丞 %.1f 孬" % [lvl, Data.MAX_LEVEL, Data.duration(id, lvl)], 30, GOLD, 4)
+		var st := _lbl("المستوى %d/%d  •  المدة %.1f ث" % [lvl, Data.MAX_LEVEL, Data.duration(id, lvl)], 30, GOLD, 4)
 		st.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		col.add_child(st)
 		var btn: Button
 		if lvl >= Data.MAX_LEVEL:
-			btn = _btn("丕賱丨丿 丕賱兀賯氐賶", Vector2(250, 100), Color("5d6d7e"), 32)
+			btn = _btn("الحد الأقصى", Vector2(250, 100), Color("5d6d7e"), 32)
 			btn.disabled = true
 		else:
 			var cost := Data.upgrade_cost(lvl)
-			btn = _btn("鬲乇賯賷丞  %d" % cost, Vector2(250, 100), GREEN, 38)
+			btn = _btn("ترقية  %d" % cost, Vector2(250, 100), GREEN, 38)
 			btn.pressed.connect(func(): _buy_upgrade(id, cost))
 		h.add_child(btn)
 
 func _buy_upgrade(id: String, cost: int) -> void:
 	if int(Save.d["coins"]) < cost:
 		Sfx.play("deny")
-		_toast("賱丕 鬲賲賱賰 毓賲賱丕鬲 賰丕賮賷丞")
+		_toast("لا تملك عملات كافية")
 		return
 	Save.d["coins"] = int(Save.d["coins"]) - cost
 	Save.d["upg"][id] = int(Save.d["upg"][id]) + 1
@@ -684,10 +716,10 @@ func _build_wardrobe() -> void:
 	panel.add_child(v)
 	var head := HBoxContainer.new()
 	v.add_child(head)
-	var back := _btn("乇噩賵毓", Vector2(190, 96), RED, 38)
+	var back := _btn("رجوع", Vector2(190, 96), RED, 38)
 	back.pressed.connect(func(): show_screen("menu"))
 	head.add_child(back)
-	var ti := _lbl("丕賱兀夭賷丕亍", 62, GOLD, 12)
+	var ti := _lbl("الأزياء", 62, GOLD, 12)
 	ti.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(ti)
 	var cp := _pill(GOLD)
@@ -703,7 +735,7 @@ func _build_wardrobe() -> void:
 	sc.add_child(ward_list)
 
 func _refresh_wardrobe() -> void:
-	ward_coins.text = str(int(Save.d["coins"]))
+	ward_coins.text = _ar(str(int(Save.d["coins"])))
 	for c in ward_list.get_children():
 		c.queue_free()
 	var owned: Array = Save.d["owned"]
@@ -732,18 +764,18 @@ func _refresh_wardrobe() -> void:
 		var equipped: bool = Save.d["outfit"] == id
 		var btn: Button
 		if equipped:
-			btn = _btn("賲購乇鬲丿賶", Vector2(260, 100), Color("5d6d7e"), 38)
+			btn = _btn("مُرتدى", Vector2(260, 100), Color("5d6d7e"), 38)
 			btn.disabled = true
 		elif has:
-			btn = _btn("丕乇鬲丿丕亍", Vector2(260, 100), GREEN, 40)
+			btn = _btn("ارتداء", Vector2(260, 100), GREEN, 40)
 			btn.pressed.connect(func(): _equip(id))
 		else:
-			btn = _btn("卮乇丕亍  %d" % int(o["price"]), Vector2(260, 100), Color("e08a1e"), 36)
+			btn = _btn("شراء  %d" % int(o["price"]), Vector2(260, 100), Color("e08a1e"), 36)
 			btn.pressed.connect(func(): _buy_outfit(id, int(o["price"])))
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		v.add_child(btn)
 		if id == "national":
-			v.add_child(_lbl("賲噩丕賳賷", 34, GOLD, 6))
+			v.add_child(_lbl("مجاني", 34, GOLD, 6))
 
 func _equip(id: String) -> void:
 	Save.d["outfit"] = id
@@ -755,7 +787,7 @@ func _equip(id: String) -> void:
 func _buy_outfit(id: String, price: int) -> void:
 	if int(Save.d["coins"]) < price:
 		Sfx.play("deny")
-		_toast("賱丕 鬲賲賱賰 毓賲賱丕鬲 賰丕賮賷丞")
+		_toast("لا تملك عملات كافية")
 		return
 	Save.d["coins"] = int(Save.d["coins"]) - price
 	Save.d["owned"].append(id)
@@ -765,7 +797,7 @@ func _buy_outfit(id: String, price: int) -> void:
 # ------------------------------------------------------------ missions
 
 func _build_missions() -> void:
-	var v := _page("missions", "丕賱賲賴丕賲")
+	var v := _page("missions", "المهام")
 	miss_list = VBoxContainer.new()
 	miss_list.add_theme_constant_override("separation", 22)
 	miss_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -799,8 +831,8 @@ func _refresh_missions() -> void:
 		h.add_theme_constant_override("separation", 24)
 		v.add_child(h)
 		h.add_child(_lbl("%d / %d" % [int(m["progress"]), int(m["target"])], 34, Color("b8c4cc"), 4))
-		h.add_child(_lbl("丕賱賲賰丕賮兀丞: %d" % int(m["reward"]), 36, GOLD, 6))
-		var b := _btn("丕爻鬲賱丕賲", Vector2(230, 90), GREEN if m["done"] else Color("5d6d7e"), 38)
+		h.add_child(_lbl("المكافأة: %d" % int(m["reward"]), 36, GOLD, 6))
+		var b := _btn("استلام", Vector2(230, 90), GREEN if m["done"] else Color("5d6d7e"), 38)
 		b.disabled = not m["done"]
 		b.pressed.connect(func(): _claim(idx))
 		h.add_child(b)
@@ -813,7 +845,7 @@ func _claim(i: int) -> void:
 # ------------------------------------------------------------ settings & daily
 
 func _build_settings() -> void:
-	var v := _page("settings", "丕賱廿毓丿丕丿丕鬲")
+	var v := _page("settings", "الإعدادات")
 	music_btn = _btn("", Vector2(700, 120), GREEN, 46)
 	music_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	music_btn.pressed.connect(func():
@@ -829,25 +861,21 @@ func _build_settings() -> void:
 	quality_btn = _btn("", Vector2(700, 120), Color("2980b9"), 46)
 	quality_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	quality_btn.pressed.connect(func():
-		Save.d["quality"] = 0 if int(Save.d["quality"]) > 0 else 1
+		Save.d["quality"] = (int(Save.d["quality"]) + 1) % 3
 		Save.save()
 		game.apply_quality(true)
 		_refresh_settings())
 	v.add_child(quality_btn)
-	var hint := _lbl("丕賱鬲丨賰賲: 丕爻丨亘 賷賲賷賳丕賸/賷爻丕乇丕賸 賱鬲睾賷賷乇 丕賱賲爻丕乇\n賱賱兀毓賱賶 賱賱賯賮夭 鈥� 賱賱兀爻賮賱 賱賱丕賳夭賱丕賯", 36, Color("b8c4cc"), 6)
+	var hint := _lbl("التحكم: اسحب يميناً/يساراً لتغيير المسار\nللأعلى للقفز • للأسفل للانزلاق", 36, Color("b8c4cc"), 6)
 	v.add_child(hint)
-	var fl := HBoxContainer.new()
-	fl.alignment = BoxContainer.ALIGNMENT_CENTER
-	fl.add_theme_constant_override("separation", 20)
-	fl.add_child(_flag())
-	fl.add_child(_lbl("氐賳毓 賮賷 丕賱毓乇丕賯", 56, GOLD, 10))
-	v.add_child(fl)
-	v.add_child(_lbl("鬲胤賵賷乇: 亘賱丕賱 丕賱賳毓賷賲賷\nBassam v1.0.0", 38, Color.WHITE, 8))
+	v.add_child(_made_badge())
+	v.add_child(_lbl("تطوير: بلال النعيمي\nالإصدار 1.0.0", 38, Color.WHITE, 8))
 
 func _refresh_settings() -> void:
-	music_btn.text = "丕賱賲賵爻賷賯賶: " + ("鬲卮睾賷賱" if Save.d["music"] else "廿賷賯丕賮")
-	sfx_btn.text = "丕賱賲丐孬乇丕鬲: " + ("鬲卮睾賷賱" if Save.d["sfx"] else "廿賷賯丕賮")
-	quality_btn.text = "丕賱噩賵丿丞: " + ("毓丕賱賷丞" if int(Save.d["quality"]) > 0 else "賲賳禺賮囟丞 (兀爻乇毓)")
+	music_btn.text = "الموسيقى: " + ("تشغيل" if Save.d["music"] else "إيقاف")
+	sfx_btn.text = "المؤثرات: " + ("تشغيل" if Save.d["sfx"] else "إيقاف")
+	var qn := ["منخفضة (الأسرع)", "متوسطة", "عالية"]
+	quality_btn.text = "الجودة: " + qn[clampi(int(Save.d["quality"]), 0, 2)]
 
 func _build_daily() -> void:
 	var s := _screen("daily")
@@ -865,7 +893,7 @@ func _build_daily() -> void:
 	daily_label = _lbl("", 54, Color.WHITE, 10)
 	daily_label.custom_minimum_size = Vector2(700, 0)
 	v.add_child(daily_label)
-	var b := _btn("丕爻鬲賱丕賲", Vector2(520, 130), GREEN, 56)
+	var b := _btn("استلام", Vector2(520, 130), GREEN, 56)
 	b.pressed.connect(func():
 		Save.claim_daily()
 		Sfx.play("buy")
