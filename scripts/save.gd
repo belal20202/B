@@ -1,4 +1,3 @@
-
 extends Node
 # Persistent save data (JSON in user://)
 
