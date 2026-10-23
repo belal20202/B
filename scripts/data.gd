@@ -1,4 +1,3 @@
-
 extends RefCounted
 # Static game data: cities, outfits, upgrades, missions.
 
@@ -70,7 +69,7 @@ static func upgrades() -> Array:
 	return [
 		{"id": "magnet", "name": "المغناطيس", "desc": "يجذب العملات القريبة", "base": 6.0, "step": 1.5, "color": Color("e5484d")},
 		{"id": "jet", "name": "الحقيبة الصاروخية", "desc": "تحلّق فوق كل العوائق", "base": 5.0, "step": 1.0, "color": Color("ff8a2a")},
-		{"id": "mult", "name": "مضاعف العملات ×2", "desc": "كل عملة تُحتسب بضعفها", "base": 8.0, "step": 2.0, "color": Color("f2c94c")},
+		{"id": "mult", "name": "مضاعف ×٢", "desc": "كل عملة تُحتسب بضعفها", "base": 8.0, "step": 2.0, "color": Color("f2c94c")},
 		{"id": "boots", "name": "حذاء القفز", "desc": "قفزة أعلى وأطول", "base": 8.0, "step": 2.0, "color": Color("3ecf6e")},
 		{"id": "shield", "name": "الدرع", "desc": "يحميك من اصطدام واحد", "base": 8.0, "step": 2.0, "color": Color("39b8f0")},
 	]
