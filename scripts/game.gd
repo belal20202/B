@@ -10,9 +10,9 @@ signal city_reached(index)
 
 const LANES := [-2.2, 0.0, 2.2]
 const SEG_LEN := 24.0
-const SEG_COUNT := 11
+const SEG_COUNT := 9
 const RECYCLE_Z := 82.0
-const SPAWN_Z := -170.0
+const SPAWN_Z := -125.0
 const GRAV := 38.0
 const REVIVE_COST := 500
 
@@ -62,7 +62,8 @@ var jet_node: Node3D
 var flame_nodes: Array = []
 var spark: CPUParticles3D
 var look_cur := Vector3(0, 0, 0)
-var font: SystemFont
+var font: Font
+var cities: Array = []
 var _mats := {}
 var _facade: ImageTexture
 var coin_mesh: CylinderMesh
@@ -87,15 +88,15 @@ var _asphalt_mat: StandardMaterial3D
 var _walk_tex: ImageTexture
 var _facade_em: ImageTexture
 var _facade_mats: Array = []
+var _glass_mat: StandardMaterial3D
 var _cloud_mat: StandardMaterial3D
 var _star_mat: StandardMaterial3D
 var _moon_mat: StandardMaterial3D
 
 func _ready() -> void:
 	randomize()
-	font = SystemFont.new()
-	font.font_names = PackedStringArray(["Noto Sans Arabic", "Noto Naskh Arabic", "Droid Arabic Naskh", "Roboto", "Arial", "sans-serif"])
-	font.font_weight = 700
+	font = _load_font()
+	cities = Data.cities()
 	Decor.font = font
 	Decor.quality = int(Save.d.get("quality", 1))
 	_make_textures()
@@ -122,7 +123,7 @@ func _ready() -> void:
 # ---------------------------------------------------------------- setup
 
 func _setup_environment() -> void:
-	var th: Dictionary = Data.cities()[0]
+	var th: Dictionary = Data.cities()[0]  # initial look
 	cur_top = th["sky_top"]
 	cur_hor = th["sky_hor"]
 	cur_fog = th["fog"]
@@ -140,9 +141,12 @@ func _setup_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 0.9
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.08
+	env.adjustment_saturation = 1.12
 	env.fog_enabled = true
 	env.fog_light_color = cur_fog
-	env.fog_density = 0.0085
+	env.fog_density = 0.011
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -151,11 +155,12 @@ func _setup_environment() -> void:
 	sun.light_color = cur_sun
 	sun.light_energy = 1.25
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 45.0
+	sun.directional_shadow_max_distance = 40.0
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	add_child(sun)
 	cam = Camera3D.new()
 	cam.fov = 66.0
-	cam.far = 260.0
+	cam.far = 175.0
 	cam.current = true
 	add_child(cam)
 
@@ -302,6 +307,8 @@ func _mat(c: Color, rough := 0.8, metal := 0.0) -> StandardMaterial3D:
 	m.albedo_color = c
 	m.roughness = rough
 	m.metallic = metal
+	if metal < 0.1:
+		m.metallic_specular = 0.25
 	_mats[key] = m
 	return m
 
@@ -405,8 +412,9 @@ func _sph(parent: Node3D, r: float, mat: Material, pos: Vector3, hemi := false, 
 func _fill_segment(seg: Node3D, ci: int) -> void:
 	for c in seg.get_children():
 		c.queue_free()
-	var th: Dictionary = Data.cities()[ci]
-	var hq: bool = Decor.quality > 0
+	var th: Dictionary = cities[ci]
+	var mq: bool = Decor.quality > 0
+	var hq: bool = Decor.quality > 1
 	_b(seg, Vector3(9.6, 0.2, SEG_LEN), _asphalt_mat, Vector3(0, -0.1, 0))
 	_b(seg, Vector3(220.0, 0.2, SEG_LEN), _mat(th["ground"], 1.0), Vector3(0, -0.45, 0))
 	var steel := _mat(Color("8d949c"), 0.35, 0.8)
@@ -436,7 +444,7 @@ func _fill_segment(seg: Node3D, ci: int) -> void:
 		for k in 4:
 			_b(seg, Vector3(0.45, 0.28, 6.0), curb_a if k % 2 == 0 else curb_b, Vector3(side * 4.95, 0.04, -9.0 + k * 6.0))
 		_b(seg, Vector3(3.6, 0.22, SEG_LEN), _walk_mat(th["walk"]), Vector3(side * 7.0, -0.02, 0))
-	if hq:
+	if mq:
 		_road_details(seg)
 	var water: bool = th.get("water", false)
 	if water:
@@ -467,8 +475,11 @@ func _fill_segment(seg: Node3D, ci: int) -> void:
 				_cyl(seg, 0.9, 0.9, 1.6, _mat(Color("8a8a8a"), 0.6, 0.4), Vector3(cx, h + 1.2, cz), Vector3.ZERO, 10)
 			if hq:
 				Decor.building_extras(seg, side, cx, cz, w, h)
-				if randf() < 0.55:
-					Decor.sign_board(seg, shops[randi() % shops.size()], Vector3(side * 9.36, 2.3, cz + randf_range(-1.5, 1.5)), side, awn[randi() % 4])
+			if mq:
+				_b(seg, Vector3(0.06, 1.7, 2.5), _glass_mat, Vector3(side * 9.37, 1.15, cz - 1.5))
+				_b(seg, Vector3(0.1, 2.0, 1.1), _mat(Color("4a3a2a"), 0.8), Vector3(side * 9.36, 1.0, cz + 1.9))
+				if randf() < 0.6:
+					Decor.sign_board(seg, shops[randi() % shops.size()], Vector3(side * 9.36, 2.55, cz - 1.2), side, awn[randi() % 4])
 	if hq:
 		for side in [-1.0, 1.0]:
 			if water and side < 0.0:
@@ -594,15 +605,6 @@ func _make_obstacle(kind: String, length: float) -> Node3D:
 				for sx in [-0.62, 0.62]:
 					_b(bodyn, Vector3(0.3, 0.3, 0.1), _emat(Color("fff1b0"), 2.8), Vector3(sx, 0.95, zz * (length * 0.5 + 0.02)))
 				_b(bodyn, Vector3(1.4, 0.7, 0.08), _mat(Color("18222f"), 0.2, 0.5), Vector3(0, 2.4, zz * (length * 0.5 + 0.02)))
-			var dest := Label3D.new()
-			dest.text = Data.cities()[randi() % 6]["name"]
-			dest.font = font
-			dest.font_size = 64
-			dest.pixel_size = 0.0052
-			dest.modulate = Color("ffb52e")
-			dest.outline_size = 0
-			dest.position = Vector3(0, 3.0, length * 0.5 + 0.06)
-			bodyn.add_child(dest)
 			for zz in [-length * 0.32, length * 0.32]:
 				for sx in [-0.95, 0.95]:
 					var w := Node3D.new()
@@ -887,7 +889,7 @@ func _update_theme(dt: float) -> void:
 	var idx := 0
 	if mode != "menu":
 		idx = Data.city_at(distance + 90.0)
-	var th: Dictionary = Data.cities()[idx]
+	var th: Dictionary = cities[idx]
 	var k := 1.0 - exp(-dt * 1.3)
 	cur_top = cur_top.lerp(th["sky_top"], k)
 	cur_hor = cur_hor.lerp(th["sky_hor"], k)
@@ -901,7 +903,8 @@ func _update_theme(dt: float) -> void:
 	sky_mat.sky_horizon_color = cur_hor
 	sky_mat.ground_horizon_color = cur_hor
 	env.fog_light_color = cur_fog
-	env.ambient_light_energy = amb_cur
+	env.ambient_light_energy = amb_cur * 0.85
+	_glass_mat.emission_energy_multiplier = night_cur * 2.2
 	sun.light_color = cur_sun
 	sun.light_energy = sun_energy_cur
 	sun.rotation_degrees = Vector3(sun_pitch_cur, -35.0, 0.0)
@@ -956,10 +959,10 @@ func _tick_menu(dt: float) -> void:
 	dust.emitting = false
 	fx_speed.emitting = false
 	var ang := sin(menu_t * 0.4) * 0.55 + 0.4
-	var dist := 4.6 if home else 3.4
-	var target := Vector3(sin(ang) * dist, 1.45 if home else 1.15, -cos(ang) * dist)
+	var dist := 4.3 if home else 3.1
+	var target := Vector3(sin(ang) * dist, 1.3 if home else 1.05, -cos(ang) * dist)
 	cam.position = cam.position.lerp(target, 1.0 - exp(-dt * 3.0))
-	var look := Vector3(0, -0.15 if home else -0.55, 0)
+	var look := Vector3(0, 0.55 if home else -0.3, 0)
 	look_cur = look_cur.lerp(look, 1.0 - exp(-dt * 3.0))
 	cam.look_at(look_cur, Vector3.UP)
 	cam.fov = lerpf(cam.fov, 62.0, dt * 3.0)
@@ -1238,7 +1241,7 @@ func _check_collisions() -> void:
 	if grace > 0.0 or timers["jet"] > 0.0:
 		return
 	var p0 := py
-	var p1 := py + (0.95 if rolling > 0.0 else 1.9)
+	var p1 := py + (0.85 if rolling > 0.0 else 1.65)
 	for o in obstacles:
 		var n: Node3D = o["node"]
 		var oz := n.position.z
@@ -1296,9 +1299,16 @@ func _crash() -> void:
 	if mode == "dead":
 		emit_signal("run_ended", result)
 
+func _load_font() -> Font:
+	if ResourceLoader.exists("res://fonts/arabic.ttf"):
+		return load("res://fonts/arabic.ttf")
+	var f := SystemFont.new()
+	f.font_names = PackedStringArray(["Noto Sans Arabic", "Noto Naskh Arabic", "Droid Arabic Naskh", "Arial", "sans-serif"])
+	return f
+
 func apply_quality(refill := true) -> void:
 	Decor.quality = int(Save.d.get("quality", 1))
-	sun.shadow_enabled = Decor.quality > 0
+	sun.shadow_enabled = Decor.quality > 1
 	if refill:
 		for s in segments:
 			_fill_segment(s, 0 if mode == "menu" else Data.city_at(distance + 120.0))
@@ -1318,7 +1328,15 @@ func _make_textures() -> void:
 	_asphalt_mat.albedo_texture = ImageTexture.create_from_image(img)
 	_asphalt_mat.uv1_triplanar = true
 	_asphalt_mat.uv1_scale = Vector3(0.3, 0.3, 0.3)
-	_asphalt_mat.roughness = 0.92
+	_asphalt_mat.roughness = 1.0
+	_asphalt_mat.metallic_specular = 0.12
+	_glass_mat = StandardMaterial3D.new()
+	_glass_mat.albedo_color = Color(0.22, 0.32, 0.42)
+	_glass_mat.metallic = 0.5
+	_glass_mat.roughness = 0.15
+	_glass_mat.emission_enabled = true
+	_glass_mat.emission = Color(1.0, 0.8, 0.45)
+	_glass_mat.emission_energy_multiplier = 0.0
 	var wi := Image.create(32, 32, true, Image.FORMAT_RGB8)
 	for x in 32:
 		for y in 32:
@@ -1338,7 +1356,8 @@ func _walk_mat(c: Color) -> StandardMaterial3D:
 	m.albedo_texture = _walk_tex
 	m.uv1_triplanar = true
 	m.uv1_scale = Vector3(0.5, 0.5, 0.5)
-	m.roughness = 0.9
+	m.roughness = 1.0
+	m.metallic_specular = 0.15
 	_mats[key] = m
 	return m
 
@@ -1409,11 +1428,11 @@ func _setup_sky_fx() -> void:
 	stars.add_child(moon)
 
 func _road_details(seg: Node3D) -> void:
-	var white := _mat(Color("e8e4d4"), 0.9)
-	if randf() < 0.14:
+	var white := _mat(Color("d4d0c0"), 1.0)
+	if randf() < 0.09:
 		var zc := randf_range(-8.0, 8.0)
 		for i in 9:
-			_b(seg, Vector3(0.5, 0.025, 3.2), white, Vector3(-4.0 + i * 1.0, 0.012, zc))
+			_b(seg, Vector3(0.4, 0.02, 3.0), white, Vector3(-4.0 + i * 1.0, 0.012, zc))
 	for k in randi_range(1, 2):
 		_cyl(seg, 0.42, 0.42, 0.03, _mat(Color("1b1c1e"), 0.6, 0.6), Vector3(LANES[randi() % 3] + randf_range(-0.5, 0.5), 0.015, randf_range(-10.0, 10.0)), Vector3.ZERO, 14)
 	var patch := _mat(Color("2b2c30"), 1.0)
